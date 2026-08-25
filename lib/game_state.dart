@@ -1299,6 +1299,13 @@ class _GamePageState extends State<GamePage>
 
     _runner = _box(vm.Vector3(1.0, 1.0, 1.0), debug: true);
     _scene.add(_runner);
+
+    // Diagnostic only: only reached if every line above ran with no
+    // exception. Combined with the on-screen error overlay in main.dart,
+    // seeing this AND zero captured errors AND still no visible 3D content
+    // would mean the failure is not observable from Dart at all -- i.e. a
+    // native-layer/GPU-driver problem, not an app bug.
+    _DiagLog.add('BuildWorld', 'completed with no exception');
   }
 
   /// One-time daylight scene setup: a shadow-casting sun + soft ambient so PBR
