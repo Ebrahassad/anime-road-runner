@@ -38,7 +38,7 @@ jobs:
         run: dart analyze lib || true
 
       - name: Build APK
-        run: flutter build apk --release --enable-flutter-gpu
+        run: flutter build apk --release
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk anime-road-runner.apk
