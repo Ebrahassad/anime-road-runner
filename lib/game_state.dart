@@ -501,6 +501,9 @@ class _GamePageState extends State<GamePage>
   // frame. The app stays interactive either way -- see initState -- this
   // just lets the menu surface a hint instead of pretending nothing is wrong.
   bool _worldLoadError = false;
+  // The actual exception text, shown on the menu next to the warning so it
+  // can be read/reported without needing a debugger or `adb logcat`.
+  String? _worldLoadErrorDetail;
 
   // floating "+N" score popups (screen space, projected via the last camera)
   Camera? _lastCamera;
@@ -528,7 +531,12 @@ class _GamePageState extends State<GamePage>
         if (!mounted) return;
       } catch (e, st) {
         debugPrint('World/model load failed: $e\n$st');
-        if (mounted) setState(() => _worldLoadError = true);
+        if (mounted) {
+          setState(() {
+            _worldLoadError = true;
+            _worldLoadErrorDetail = e.toString();
+          });
+        }
       }
     });
 
@@ -2596,6 +2604,20 @@ class _GamePageState extends State<GamePage>
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: cRed, fontSize: 12),
                 ),
+                if (_worldLoadErrorDetail != null) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SelectableText(
+                      _worldLoadErrorDetail!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          fontFamily: 'monospace'),
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 26),
               _leaderboard(),
