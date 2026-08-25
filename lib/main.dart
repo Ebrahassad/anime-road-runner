@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
@@ -151,36 +152,101 @@ class _EngineGateState extends State<_EngineGate> {
 /// Shown for the brief window while GPU shader resources compile. Replaces
 /// the native launch screen almost instantly, then this replaces itself with
 /// the game once ready — so the person always sees *something* moving.
-class _BootScreen extends StatelessWidget {
+///
+/// Deliberately shows a live elapsed-time counter rather than a fake
+/// percentage bar: `Scene.initializeStaticResources()` gives no progress
+/// callbacks, so a "filling" progress bar would just be a lie. The counter
+/// (and the indeterminate bar still animating) is also a genuine diagnostic:
+/// if the whole engine truly locks up at the native/GPU-driver level, BOTH
+/// stop moving at once — which is exactly what to look for and report back.
+class _BootScreen extends StatefulWidget {
   const _BootScreen();
 
   @override
+  State<_BootScreen> createState() => _BootScreenState();
+}
+
+class _BootScreenState extends State<_BootScreen> {
+  final Stopwatch _stopwatch = Stopwatch()..start();
+  Timer? _timer;
+  int _seconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _seconds = _stopwatch.elapsed.inSeconds);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final String? hint = _seconds >= 12
+        ? AppStrings.t('boot_taking_long')
+        : _seconds >= 5
+            ? AppStrings.t('boot_still_working')
+            : null;
+
     return Scaffold(
       backgroundColor: _bootBg,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(_bootTeal),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: Image.asset(
+                  'assets/icon/app_icon.png',
+                  width: 84,
+                  height: 84,
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              AppStrings.t('app_name'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
+              const SizedBox(height: 22),
+              Text(
+                AppStrings.t('app_name'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 26),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: const SizedBox(
+                  width: 180,
+                  height: 5,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Color(0x22FFFFFF),
+                    valueColor: AlwaysStoppedAnimation<Color>(_bootTeal),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '${AppStrings.t('boot_initializing')}  ·  ${_seconds}s',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              if (hint != null) ...<Widget>[
+                const SizedBox(height: 18),
+                Text(
+                  hint,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
