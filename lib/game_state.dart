@@ -447,7 +447,7 @@ class _GamePageState extends State<GamePage>
   final List<_Coin> _coins = <_Coin>[];
   final List<_PowerUp> _powerups = <_PowerUp>[];
   final List<_ParticlePool> _particlePools = <_ParticlePool>[];
-  late final Node _runner; // debug-cube placeholder, shown until Dash loads
+  Node? _runner; // debug-cube placeholder, shown until Dash loads
   Node? _dash; // the Flutter Dash model; null until fromGlbAsset resolves
   // Blended locomotion clips + their eased weights: Idle on the menu, Run
   // while playing, Jump one-shot in the air. AnimationClip is unambiguous

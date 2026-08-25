@@ -322,12 +322,17 @@ class _GamePainter extends CustomPainter {
       dm.scaleByDouble(_GamePageState.dashScale, _GamePageState.dashScale,
           _GamePageState.dashScale, 1.0);
       dash.markTransformDirty();
-      _park(state._runner); // hide the placeholder cube
+      final Node? runner = state._runner;
+      if (runner != null) {
+        _park(runner); // hide the placeholder cube
+      }
     } else {
       // Placeholder cube until the model finishes importing.
       final double lean = (lateralV * 6.0).clamp(-0.35, 0.35);
       final double idleBob = state._grounded ? math.sin(t * 3.0) * 0.06 : 0.0;
-      final vm.Matrix4 rt = state._runner.localTransform;
+      final Node? runner = state._runner;
+      if (runner == null) return;
+      final vm.Matrix4 rt = runner.localTransform;
       rt.setIdentity();
       rt.setTranslationRaw(
         state._runnerX,
@@ -336,7 +341,7 @@ class _GamePainter extends CustomPainter {
       );
       rt.rotateZ(-lean);
       rt.rotateY(t * 0.6);
-      state._runner.markTransformDirty();
+      runner.markTransformDirty();
     }
 
     // Particles are instanced per colour. Inactive ones collapse to a zero
