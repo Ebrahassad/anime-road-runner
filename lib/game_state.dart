@@ -1297,8 +1297,9 @@ class _GamePageState extends State<GamePage>
       _scene.add(Node()..addComponent(InstancedMeshComponent(mesh)));
     }
 
-    _runner = _box(vm.Vector3(1.0, 1.0, 1.0), debug: true);
-    _scene.add(_runner);
+    final Node runner = _box(vm.Vector3(1.0, 1.0, 1.0), debug: true);
+    _runner = runner;
+    _scene.add(runner);
 
     // Diagnostic only: only reached if every line above ran with no
     // exception. Combined with the on-screen error overlay in main.dart,
