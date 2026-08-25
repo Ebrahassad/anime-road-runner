@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,14 +29,25 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
       - name: Analyze
         run: dart analyze lib || true
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk anime-road-runner.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: anime-road-runner-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: build-${{ github.run_number }}
+          name: Anime Road Runner Build ${{ github.run_number }}
+          body: |
+            Anime Road Runner Android APK
+            Automated release build.
+          files: anime-road-runner.apk
+          generate_release_notes: false
