@@ -20,29 +20,21 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- REQUIRED for flutter_scene / Flutter GPU (Impeller) on Android.
-                 Without this flag Scene.initializeStaticResources() throws
-                 "Failed to initialize ShaderLibrary" at startup, which happens
-                 BEFORE the first Flutter frame is ever drawn, so the OS launch
-                 screen never gets replaced and the app appears to hang
-                 forever on the splash screen. macOS carries the matching
-                 opt-in as FLTEnableFlutterGPU in Info.plist; this is the
-                 Android equivalent. -->
+            <!-- REQUIRED for flutter_scene / Flutter GPU on Android.
+                 EnableImpeller ensures the Impeller rendering backend is
+                 active (default on Android since Flutter 3.x, but explicit
+                 here for safety). EnableFlutterGPU opts into the Dart GPU
+                 API that flutter_scene's Scene.initializeStaticResources()
+                 needs to load its shader bundle. Without either flag the
+                 Scene() constructor throws synchronously before the first
+                 frame, which hangs the app on the splash screen. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.EnableImpeller"
+              android:value="true"
+              />
             <meta-data
               android:name="io.flutter.embedding.android.EnableFlutterGPU"
               android:value="true"
-              />
-            <!-- Startup-hang diagnosis (see conversation history): forcing
-                 OpenGLES did not fix the freeze on the reporter's device, so
-                 this now forces Vulkan explicitly for the next test. If the
-                 hang persists with BOTH backends forced, the backend is not
-                 the cause. main.dart's boot screen shows a live elapsed-time
-                 counter specifically so a true engine-level freeze (counter
-                 stops) can be told apart from slow-but-progressing shader
-                 compilation (counter keeps going) without a debugger. -->
-            <meta-data
-              android:name="io.flutter.embedding.android.ImpellerBackend"
-              android:value="vulkan"
               />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
