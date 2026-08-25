@@ -28,6 +28,7 @@ const Color _bootRed = Color(0xFFE0533D);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   // IMPORTANT: `runApp` is called immediately, with no awaited work before
   // it. Flutter's native launch screen (Android `launch_background.xml` /
   // macOS launch storyboard) stays on screen only until the FIRST Flutter
@@ -108,21 +109,97 @@ class _EngineGateState extends State<_EngineGate> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(_startInit);
+      if (mounted) {
+        setState(_startInit);
+      }
     });
   }
 
+  /// Starts the scene initialization safely.
+  ///
+  /// IMPORTANT:
+  /// Scene.initializeStaticResources() itself is inside try/catch because
+  /// it may theoretically throw synchronously before returning a Future.
+  /// In that case `.timeout()` cannot protect the call because no Future
+  /// exists yet.
   void _startInit() {
-    _ready = Scene.initializeStaticResources().timeout(
-      const Duration(seconds: 20),
-      onTimeout: () => throw Exception(
-          'Timed out waiting for the GPU shader pipeline to initialize.'),
+    debugPrint(
+      '[EngineGate] Starting Scene.initializeStaticResources()...',
     );
+
+    try {
+      late final Future<void> initializationFuture;
+
+      // Protect the CALL itself.
+      try {
+        initializationFuture = Scene.initializeStaticResources();
+
+        debugPrint(
+          '[EngineGate] Scene.initializeStaticResources() returned a Future.',
+        );
+      } catch (error, stackTrace) {
+        debugPrint(
+          '[EngineGate] SYNCHRONOUS initialization error: $error',
+        );
+        debugPrint(
+          '[EngineGate] Stack trace:\n$stackTrace',
+        );
+
+        // Convert the synchronous exception into a Future error so
+        // FutureBuilder can display the error screen normally.
+        _ready = Future<void>.error(error, stackTrace);
+        return;
+      }
+
+      // The Future now definitely exists, therefore timeout() is safe.
+      _ready = initializationFuture.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          final TimeoutException timeout = TimeoutException(
+            'Timed out waiting for the GPU shader pipeline to initialize.',
+            const Duration(seconds: 20),
+          );
+
+          debugPrint(
+            '[EngineGate] INITIALIZATION TIMEOUT: $timeout',
+          );
+
+          throw timeout;
+        },
+      );
+
+      debugPrint(
+        '[EngineGate] Initialization Future is now being monitored.',
+      );
+    } catch (error, stackTrace) {
+      // Defensive outer catch. This prevents _ready from remaining null if
+      // something unexpected escapes the initialization setup.
+      debugPrint(
+        '[EngineGate] UNEXPECTED initialization error: $error',
+      );
+      debugPrint(
+        '[EngineGate] Stack trace:\n$stackTrace',
+      );
+
+      _ready = Future<void>.error(error, stackTrace);
+    }
   }
 
   void _retry() {
-    setState(_startInit);
+    if (!mounted) {
+      return;
+    }
+
+    debugPrint('[EngineGate] Retrying engine initialization...');
+
+    setState(() {
+      // Reset the old Future before starting the new attempt.
+      _ready = null;
+
+      _startInit();
+    });
   }
 
   @override
@@ -131,18 +208,36 @@ class _EngineGateState extends State<_EngineGate> {
       // First frame: nothing has been asked of the GPU/shader pipeline yet.
       return const _BootScreen();
     }
+
     return FutureBuilder<void>(
       future: _ready,
       builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const _BootScreen();
         }
+
         if (snapshot.hasError) {
+          debugPrint(
+            '[EngineGate] Initialization failed: ${snapshot.error}',
+          );
+
+          if (snapshot.stackTrace != null) {
+            debugPrint(
+              '[EngineGate] Initialization stack trace:\n'
+              '${snapshot.stackTrace}',
+            );
+          }
+
           return _BootErrorScreen(
             error: snapshot.error,
             onRetry: _retry,
           );
         }
+
+        debugPrint(
+          '[EngineGate] Engine initialization completed successfully.',
+        );
+
         return const GamePage();
       },
     );
@@ -168,20 +263,31 @@ class _BootScreen extends StatefulWidget {
 
 class _BootScreenState extends State<_BootScreen> {
   final Stopwatch _stopwatch = Stopwatch()..start();
+
   Timer? _timer;
+
   int _seconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _seconds = _stopwatch.elapsed.inSeconds);
-    });
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (mounted) {
+          setState(
+            () => _seconds = _stopwatch.elapsed.inSeconds,
+          );
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _stopwatch.stop();
     super.dispose();
   }
 
@@ -228,21 +334,29 @@ class _BootScreenState extends State<_BootScreen> {
                   height: 5,
                   child: LinearProgressIndicator(
                     backgroundColor: Color(0x22FFFFFF),
-                    valueColor: AlwaysStoppedAnimation<Color>(_bootTeal),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _bootTeal,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               Text(
                 '${AppStrings.t('boot_initializing')}  ·  ${_seconds}s',
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 12,
+                ),
               ),
               if (hint != null) ...<Widget>[
                 const SizedBox(height: 18),
                 Text(
                   hint,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ],
@@ -256,11 +370,15 @@ class _BootScreenState extends State<_BootScreen> {
 /// Shown only if GPU/shader initialization genuinely fails (e.g. a device or
 /// build without Flutter GPU enabled). This is the safe alternative to the
 /// previous behaviour, where the same failure threw before `runApp` and left
-/// the OS splash screen on screen forever with no feedback at all.
+/// the OS splash screen on screen forever with no feedback.
 class _BootErrorScreen extends StatelessWidget {
-  const _BootErrorScreen({required this.error, required this.onRetry});
+  const _BootErrorScreen({
+    required this.error,
+    required this.onRetry,
+  });
 
   final Object? error;
+
   final VoidCallback onRetry;
 
   @override
@@ -274,8 +392,11 @@ class _BootErrorScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const Icon(Icons.error_outline_rounded,
-                    color: _bootRed, size: 44),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: _bootRed,
+                  size: 44,
+                ),
                 const SizedBox(height: 14),
                 const Text(
                   'Could not start the 3D engine',
@@ -288,9 +409,14 @@ class _BootErrorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Your device or build may not have Flutter GPU enabled.',
+                  error == null
+                      ? 'Your device or build may not have Flutter GPU enabled.'
+                      : 'Initialization failed:\n$error',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 22),
                 ElevatedButton(
@@ -299,12 +425,19 @@ class _BootErrorScreen extends StatelessWidget {
                     backgroundColor: _bootGold,
                     foregroundColor: _bootBg,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 12),
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('RETRY',
-                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'RETRY',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ],
             ),
