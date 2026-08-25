@@ -92,16 +92,32 @@ class _EngineGate extends StatefulWidget {
 }
 
 class _EngineGateState extends State<_EngineGate> {
+  // Deliberately null until after the FIRST Flutter frame has actually been
+  // painted. `initState()` runs during the BUILD phase of that same first
+  // frame -- calling Scene.initializeStaticResources() from here (even
+  // "after runApp()" in main.dart) still blocks frame 1 if the call does any
+  // synchronous native/shader work before its first internal `await`. That
+  // is exactly what kept happening: the launch screen ended, but the very
+  // next Flutter frame never painted either, so the OS fell back to its
+  // plain grey NormalTheme window background and sat there indefinitely.
+  // Starting the engine from a post-frame callback instead guarantees frame
+  // 1 (this boot screen) is fully on screen *before* that work begins.
   Future<void>? _ready;
 
   @override
   void initState() {
     super.initState();
-    _startInit();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(_startInit);
+    });
   }
 
   void _startInit() {
-    _ready = Scene.initializeStaticResources();
+    _ready = Scene.initializeStaticResources().timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => throw Exception(
+          'Timed out waiting for the GPU shader pipeline to initialize.'),
+    );
   }
 
   void _retry() {
@@ -110,6 +126,10 @@ class _EngineGateState extends State<_EngineGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (_ready == null) {
+      // First frame: nothing has been asked of the GPU/shader pipeline yet.
+      return const _BootScreen();
+    }
     return FutureBuilder<void>(
       future: _ready,
       builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
