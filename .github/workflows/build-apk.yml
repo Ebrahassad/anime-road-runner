@@ -23,6 +23,22 @@ jobs:
           channel: master
           cache: true
 
+      - name: Enable native assets (required by flutter_scene)
+        # flutter_scene converts .glb models and builds materials at build
+        # time via Dart's experimental Native Assets feature (see
+        # https://fscene.dev/api/flutter_scene/latest/). That feature is
+        # OFF by default and is a one-time `flutter config` setting on the
+        # machine doing the build -- but this workflow provisions a brand
+        # new runner on every run, so without this step the setting was
+        # never made and the build hook that produces real, drawable 3D
+        # content silently never ran. The APK still built and launched
+        # (nothing about that failure throws a catchable Dart exception),
+        # it just had no renderable scene content, which is exactly the
+        # "engine starts fine, nothing draws" symptom being debugged.
+        run: |
+          flutter config --enable-native-assets
+          flutter config --enable-dart-data-assets
+
       - name: Flutter version
         run: |
           flutter --version
