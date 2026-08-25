@@ -25,8 +25,121 @@ const Color _bootGold = Color(0xFFFFC93C);
 const Color _bootTeal = Color(0xFF4FD1C5);
 const Color _bootRed = Color(0xFFE0533D);
 
+/// Catches literally every error the app can produce -- including ones that
+/// slip past local try/catch blocks entirely (errors in unawaited Futures,
+/// in a widget's build()/paint(), or anywhere else) -- and keeps a short log
+/// visible directly on screen. Two previous fix attempts (Impeller backend,
+/// native-assets build config) changed nothing, which means guessing at the
+/// cause is no longer a responsible way to keep spending your time on ~10
+/// minute CI builds. This makes the next build self-diagnosing instead.
+class _DiagLog {
+  _DiagLog._();
+  static final ValueNotifier<List<String>> entries =
+      ValueNotifier<List<String>>(<String>[]);
+
+  static void add(String source, Object error, [StackTrace? st]) {
+    final String short = error.toString().split('\n').first;
+    final String entry = '[$source] $short';
+    // Cap at 12 entries so a repeating error cannot flood the screen.
+    if (entries.value.length >= 12) return;
+    entries.value = <String>[...entries.value, entry];
+    // Full text (with stack trace) still goes to the normal debug console
+    // for anyone who does have logcat access.
+    debugPrint('$entry\n$st');
+  }
+}
+
+/// Always-on-top banner: shows a red counter the instant ANY error is
+/// captured by _DiagLog, on every screen (boot, menu, gameplay). Tapping it
+/// expands the full list of captured messages. If this never appears at all
+/// while the 3D content is still missing, that itself is important
+/// information -- it means the failure produces no error anywhere in the
+/// Dart runtime, which points at the native rendering layer specifically.
+class _DiagOverlay extends StatefulWidget {
+  const _DiagOverlay({required this.child});
+  final Widget child;
+
+  @override
+  State<_DiagOverlay> createState() => _DiagOverlayState();
+}
+
+class _DiagOverlayState extends State<_DiagOverlay> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<String>>(
+      valueListenable: _DiagLog.entries,
+      builder: (BuildContext context, List<String> list, Widget? child) {
+        return Stack(
+          children: <Widget>[
+            widget.child,
+            if (list.isNotEmpty)
+              Positioned(
+                left: 8,
+                top: 30,
+                right: 8,
+                child: SafeArea(
+                  bottom: false,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xEE7A1F1F),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _bootRed),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            '⚠ ${list.length} diagnostic message(s) — tap to '
+                            '${_expanded ? 'hide' : 'show'}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700),
+                          ),
+                          if (_expanded)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: SelectableText(
+                                list.join('\n'),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontFamily: 'monospace'),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Catch-everything hooks, installed before runApp() so nothing can slip
+  // through before they're active.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    _DiagLog.add('FlutterError', details.exceptionAsString(), details.stack);
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    _DiagLog.add('Uncaught', error, stack);
+    return true;
+  };
 
   // Do not perform GPU/Scene initialization before runApp().
   // The Flutter UI must get its first frame first.
@@ -69,7 +182,7 @@ class RunnerApp extends StatelessWidget {
                 brightness: Brightness.dark,
               ),
             ),
-            home: const _EngineGate(),
+            home: _DiagOverlay(child: const _EngineGate()),
           ),
         );
       },
