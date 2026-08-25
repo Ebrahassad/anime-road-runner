@@ -73,6 +73,10 @@ class AppStrings {
     'quality_balanced': 'BALANCED',
     'quality_fast': 'FAST',
     'world_load_warning': 'Some assets failed to load — try restarting',
+    'boot_initializing': 'Initializing 3D engine',
+    'boot_still_working': 'Still working — first launch can take a bit longer',
+    'boot_taking_long':
+        'Taking longer than usual. If this device struggles to continue, an option to retry will appear shortly.',
   };
 
   static const Map<String, String> _ar = <String, String>{
@@ -108,5 +112,9 @@ class AppStrings {
     'quality_balanced': 'متوازنة',
     'quality_fast': 'سريعة',
     'world_load_warning': 'فشل تحميل بعض الموارد — حاول إعادة التشغيل',
+    'boot_initializing': 'جارٍ تهيئة محرك الرسوميات ثلاثي الأبعاد',
+    'boot_still_working': 'لا يزال العمل جاريًا — أول تشغيل قد يستغرق وقتًا أطول قليلًا',
+    'boot_taking_long':
+        'الأمر يستغرق وقتًا أطول من المعتاد. إن استمر التحميل، سيظهر خيار إعادة المحاولة قريبًا.',
   };
 }
