@@ -1,0 +1,46 @@
+name: anime_road_runner
+description: "Anime Road Runner — a 3D endless runner built on Flutter GPU."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_scene: ^0.19.0
+  vector_math: ^2.2.0
+  shared_preferences: ^2.5.5
+  audioplayers: ^6.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/dash.glb
+    - assets/city_props/
+    - assets/road/
+    - assets/sfx/
+    - assets/icon/app_icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  # Adaptive icon (Android 8+): a padded, transparent-background foreground
+  # over a solid background colour, so no launcher pads the art with an
+  # unwanted white square. Background colour is sampled from the icon's own
+  # sky. Kept in sync with the hand-generated files already committed under
+  # android/app/src/main/res/mipmap-*/ — re-running this tool (e.g. in CI)
+  # regenerates the same result.
+  adaptive_icon_background: "#60C5F9"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
