@@ -20,8 +20,7 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- REQUIRED for flutter_scene / Flutter GPU (Impeller) on Android.
-                 Without this flag Scene.initializeStaticResources() throws
+               Without this flag Scene.initializeStaticResources() throws
                  "Failed to initialize ShaderLibrary" at startup, which happens
                  BEFORE the first Flutter frame is ever drawn -- the OS launch
                  screen therefore never gets replaced and the app appears to
