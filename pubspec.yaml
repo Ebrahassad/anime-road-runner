@@ -36,10 +36,11 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/app_icon.png"
-  # Adaptive icon (Android 8+): a padded, transparent-background foreground
-  # over a solid background colour, so no launcher pads the art with an
-  # unwanted white square. Background colour is sampled from the icon's own
-  # sky. Kept in sync with the hand-generated files already committed under
+  # Adaptive icon (Android 8+): full-bleed foreground (no transparent
+  # padding) over a solid background colour sampled from the icon's own sky,
+  # so the artwork fills the whole icon shape edge-to-edge on every launcher
+  # regardless of its mask -- no visible background "box" around it. Kept in
+  # sync with the hand-generated files already committed under
   # android/app/src/main/res/mipmap-*/ — re-running this tool (e.g. in CI)
   # regenerates the same result.
   adaptive_icon_background: "#60C5F9"
