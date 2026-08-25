@@ -19,8 +19,7 @@ part 'game_painter.dart';
 part 'models.dart';
 
 // --- App palette used before the game world exists -------------------------
-// (boot / error screens run before `_GamePageState`'s own palette exists, so
-// they carry their own tiny copy rather than reaching into the game state).
+
 const Color _bootBg = Color(0xFF0E1220);
 const Color _bootGold = Color(0xFFFFC93C);
 const Color _bootTeal = Color(0xFF4FD1C5);
@@ -29,16 +28,8 @@ const Color _bootRed = Color(0xFFE0533D);
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // IMPORTANT: `runApp` is called immediately, with no awaited work before
-  // it. Flutter's native launch screen (Android `launch_background.xml` /
-  // macOS launch storyboard) stays on screen only until the FIRST Flutter
-  // frame is painted. Anything awaited here — GPU shader compilation, asset
-  // loading, etc. — delays that first frame and, if it throws or hangs, the
-  // app never leaves the splash screen at all. All heavy startup work
-  // (`Scene.initializeStaticResources()`, world/model loading) now happens
-  // *after* the first frame, inside `_EngineGate`/`_GamePageState`, each
-  // guarded by its own error handling so a failure shows a message instead
-  // of a frozen screen.
+  // Do not perform GPU/Scene initialization before runApp().
+  // The Flutter UI must get its first frame first.
   runApp(const RunnerApp());
 }
 
@@ -61,7 +52,11 @@ class RunnerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AppLanguage>(
       valueListenable: AppStrings.language,
-      builder: (BuildContext context, AppLanguage lang, Widget? child) {
+      builder: (
+        BuildContext context,
+        AppLanguage lang,
+        Widget? child,
+      ) {
         return Directionality(
           textDirection: AppStrings.direction,
           child: MaterialApp(
@@ -82,10 +77,14 @@ class RunnerApp extends StatelessWidget {
   }
 }
 
-/// Boots the `flutter_scene` / Flutter GPU shader pipeline strictly *after*
-/// the first Flutter frame is already on screen, and never lets a startup
-/// failure freeze the app: success moves on to [GamePage], failure shows a
-/// friendly, retryable error screen instead of an unrecoverable hang.
+/// Starts flutter_scene / Flutter GPU only after the first Flutter frame.
+///
+/// There is intentionally NO artificial timeout here. The previous 20-second
+/// timeout converted a slow/hanging GPU initialization into a misleading
+/// "Could not start the 3D engine" error.
+///
+/// The boot screen remains visible and its timer continues running while the
+/// Scene initialization Future is pending.
 class _EngineGate extends StatefulWidget {
   const _EngineGate();
 
@@ -94,36 +93,27 @@ class _EngineGate extends StatefulWidget {
 }
 
 class _EngineGateState extends State<_EngineGate> {
-  // Deliberately null until after the FIRST Flutter frame has actually been
-  // painted. `initState()` runs during the BUILD phase of that same first
-  // frame -- calling Scene.initializeStaticResources() from here (even
-  // "after runApp()" in main.dart) still blocks frame 1 if the call does any
-  // synchronous native/shader work before its first internal `await`. That
-  // is exactly what kept happening: the launch screen ended, but the very
-  // next Flutter frame never painted either, so the OS fell back to its
-  // plain grey NormalTheme window background and sat there indefinitely.
-  // Starting the engine from a post-frame callback instead guarantees frame
-  // 1 (this boot screen) is fully on screen *before* that work begins.
   Future<void>? _ready;
+  bool _initializationStarted = false;
 
   @override
   void initState() {
     super.initState();
 
+    // Let Flutter paint the boot screen first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(_startInit);
+      if (!mounted || _initializationStarted) {
+        return;
       }
+
+      _initializationStarted = true;
+
+      setState(() {
+        _startInit();
+      });
     });
   }
 
-  /// Starts the scene initialization safely.
-  ///
-  /// IMPORTANT:
-  /// Scene.initializeStaticResources() itself is inside try/catch because
-  /// it may theoretically throw synchronously before returning a Future.
-  /// In that case `.timeout()` cannot protect the call because no Future
-  /// exists yet.
   void _startInit() {
     debugPrint(
       '[EngineGate] Starting Scene.initializeStaticResources()...',
@@ -132,7 +122,7 @@ class _EngineGateState extends State<_EngineGate> {
     try {
       late final Future<void> initializationFuture;
 
-      // Protect the CALL itself.
+      // Protect synchronous exceptions as well.
       try {
         initializationFuture = Scene.initializeStaticResources();
 
@@ -147,35 +137,25 @@ class _EngineGateState extends State<_EngineGate> {
           '[EngineGate] Stack trace:\n$stackTrace',
         );
 
-        // Convert the synchronous exception into a Future error so
-        // FutureBuilder can display the error screen normally.
-        _ready = Future<void>.error(error, stackTrace);
+        _ready = Future<void>.error(
+          error,
+          stackTrace,
+        );
         return;
       }
 
-      // The Future now definitely exists, therefore timeout() is safe.
-      _ready = initializationFuture.timeout(
-        const Duration(seconds: 20),
-        onTimeout: () {
-          final TimeoutException timeout = TimeoutException(
-            'Timed out waiting for the GPU shader pipeline to initialize.',
-            const Duration(seconds: 20),
-          );
-
-          debugPrint(
-            '[EngineGate] INITIALIZATION TIMEOUT: $timeout',
-          );
-
-          throw timeout;
-        },
-      );
+      // IMPORTANT:
+      // No timeout here.
+      //
+      // If the GPU initialization takes a long time, the boot screen remains
+      // alive and the elapsed-time counter continues to show that Flutter
+      // itself is still running.
+      _ready = initializationFuture;
 
       debugPrint(
-        '[EngineGate] Initialization Future is now being monitored.',
+        '[EngineGate] Initialization Future is being monitored.',
       );
     } catch (error, stackTrace) {
-      // Defensive outer catch. This prevents _ready from remaining null if
-      // something unexpected escapes the initialization setup.
       debugPrint(
         '[EngineGate] UNEXPECTED initialization error: $error',
       );
@@ -183,7 +163,10 @@ class _EngineGateState extends State<_EngineGate> {
         '[EngineGate] Stack trace:\n$stackTrace',
       );
 
-      _ready = Future<void>.error(error, stackTrace);
+      _ready = Future<void>.error(
+        error,
+        stackTrace,
+      );
     }
   }
 
@@ -192,26 +175,40 @@ class _EngineGateState extends State<_EngineGate> {
       return;
     }
 
-    debugPrint('[EngineGate] Retrying engine initialization...');
+    debugPrint(
+      '[EngineGate] Retrying engine initialization...',
+    );
 
     setState(() {
-      // Reset the old Future before starting the new attempt.
       _ready = null;
+      _initializationStarted = false;
+    });
 
-      _startInit();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _initializationStarted) {
+        return;
+      }
+
+      _initializationStarted = true;
+
+      setState(() {
+        _startInit();
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     if (_ready == null) {
-      // First frame: nothing has been asked of the GPU/shader pipeline yet.
       return const _BootScreen();
     }
 
     return FutureBuilder<void>(
       future: _ready,
-      builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+      builder: (
+        BuildContext context,
+        AsyncSnapshot<void> snapshot,
+      ) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const _BootScreen();
         }
@@ -244,16 +241,7 @@ class _EngineGateState extends State<_EngineGate> {
   }
 }
 
-/// Shown for the brief window while GPU shader resources compile. Replaces
-/// the native launch screen almost instantly, then this replaces itself with
-/// the game once ready — so the person always sees *something* moving.
-///
-/// Deliberately shows a live elapsed-time counter rather than a fake
-/// percentage bar: `Scene.initializeStaticResources()` gives no progress
-/// callbacks, so a "filling" progress bar would just be a lie. The counter
-/// (and the indeterminate bar still animating) is also a genuine diagnostic:
-/// if the whole engine truly locks up at the native/GPU-driver level, BOTH
-/// stop moving at once — which is exactly what to look for and report back.
+/// Boot screen shown while the GPU/Scene pipeline initializes.
 class _BootScreen extends StatefulWidget {
   const _BootScreen();
 
@@ -276,9 +264,9 @@ class _BootScreenState extends State<_BootScreen> {
       const Duration(seconds: 1),
       (_) {
         if (mounted) {
-          setState(
-            () => _seconds = _stopwatch.elapsed.inSeconds,
-          );
+          setState(() {
+            _seconds = _stopwatch.elapsed.inSeconds;
+          });
         }
       },
     );
@@ -367,10 +355,7 @@ class _BootScreenState extends State<_BootScreen> {
   }
 }
 
-/// Shown only if GPU/shader initialization genuinely fails (e.g. a device or
-/// build without Flutter GPU enabled). This is the safe alternative to the
-/// previous behaviour, where the same failure threw before `runApp` and left
-/// the OS splash screen on screen forever with no feedback.
+/// Error screen shown only when initialization actually throws.
 class _BootErrorScreen extends StatelessWidget {
   const _BootErrorScreen({
     required this.error,
@@ -378,7 +363,6 @@ class _BootErrorScreen extends StatelessWidget {
   });
 
   final Object? error;
-
   final VoidCallback onRetry;
 
   @override
