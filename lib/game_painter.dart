@@ -331,17 +331,18 @@ class _GamePainter extends CustomPainter {
       final double lean = (lateralV * 6.0).clamp(-0.35, 0.35);
       final double idleBob = state._grounded ? math.sin(t * 3.0) * 0.06 : 0.0;
       final Node? runner = state._runner;
-      if (runner == null) return;
-      final vm.Matrix4 rt = runner.localTransform;
-      rt.setIdentity();
-      rt.setTranslationRaw(
-        state._runnerX,
-        _GamePageState.groundY + state._jumpY + idleBob,
-        _GamePageState.runnerZ,
-      );
-      rt.rotateZ(-lean);
-      rt.rotateY(t * 0.6);
-      runner.markTransformDirty();
+      if (runner != null) {
+        final vm.Matrix4 rt = runner.localTransform;
+        rt.setIdentity();
+        rt.setTranslationRaw(
+          state._runnerX,
+          _GamePageState.groundY + state._jumpY + idleBob,
+          _GamePageState.runnerZ,
+        );
+        rt.rotateZ(-lean);
+        rt.rotateY(t * 0.6);
+        runner.markTransformDirty();
+      }
     }
 
     // Particles are instanced per colour. Inactive ones collapse to a zero
