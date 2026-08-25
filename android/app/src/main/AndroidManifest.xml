@@ -14,18 +14,6 @@
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="true" />
 
-        <!-- DIAGNOSTIC: the engine now boots successfully (shader library
-             initializes without error) but nothing from the 3D scene draws;
-             only the separate 2D sky/cloud layer and HUD are visible. That
-             pattern (init succeeds, draw is silently a no-op) is a known
-             category of Vulkan/Impeller driver issue on some Android GPUs. This forces OpenGLES instead of the default Vulkan
-             selection, to test whether that is what is happening here. If
-             the 3D content still does not appear with this set, the backend
-             is not the cause and this tag should be removed again. -->
-        <meta-data
-            android:name="io.flutter.embedding.android.ImpellerBackend"
-            android:value="opengles" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
