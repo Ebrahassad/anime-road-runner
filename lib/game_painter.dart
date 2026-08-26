@@ -89,6 +89,14 @@ class _GamePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Guard against painting before _buildWorld() has finished: `_runner`
+    // and the other late-initialized instanced-mesh fields it sets up are
+    // not ready until then, and reading them earlier throws
+    // LateInitializationError on every single frame attempted before that
+    // (which is what was actually happening -- silently, once per frame,
+    // aborting this painter's draw before it ever reached scene.render()).
+    if (!state._worldReady) return;
+
     final double scroll = state._scrollZ;
     final double t = state._elapsed;
 
@@ -322,27 +330,21 @@ class _GamePainter extends CustomPainter {
       dm.scaleByDouble(_GamePageState.dashScale, _GamePageState.dashScale,
           _GamePageState.dashScale, 1.0);
       dash.markTransformDirty();
-      final Node? runner = state._runner;
-      if (runner != null) {
-        _park(runner); // hide the placeholder cube
-      }
+      _park(state._runner); // hide the placeholder cube
     } else {
       // Placeholder cube until the model finishes importing.
       final double lean = (lateralV * 6.0).clamp(-0.35, 0.35);
       final double idleBob = state._grounded ? math.sin(t * 3.0) * 0.06 : 0.0;
-      final Node? runner = state._runner;
-      if (runner != null) {
-        final vm.Matrix4 rt = runner.localTransform;
-        rt.setIdentity();
-        rt.setTranslationRaw(
-          state._runnerX,
-          _GamePageState.groundY + state._jumpY + idleBob,
-          _GamePageState.runnerZ,
-        );
-        rt.rotateZ(-lean);
-        rt.rotateY(t * 0.6);
-        runner.markTransformDirty();
-      }
+      final vm.Matrix4 rt = state._runner.localTransform;
+      rt.setIdentity();
+      rt.setTranslationRaw(
+        state._runnerX,
+        _GamePageState.groundY + state._jumpY + idleBob,
+        _GamePageState.runnerZ,
+      );
+      rt.rotateZ(-lean);
+      rt.rotateY(t * 0.6);
+      state._runner.markTransformDirty();
     }
 
     // Particles are instanced per colour. Inactive ones collapse to a zero
