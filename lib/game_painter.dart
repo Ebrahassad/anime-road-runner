@@ -87,8 +87,19 @@ class _GamePainter extends CustomPainter {
   /// the scene (see the pooling contract in CLAUDE.md) — it hides it here.
   static void _park(Node node) => _place(node, 0, -1000, 0);
 
+  static int _diagPaintCounter = 0;
+
   @override
   void paint(Canvas canvas, Size size) {
+    _diagPaintCounter++;
+
+    // Log only every 60 paint calls to avoid flooding the diagnostic log.
+    if (_diagPaintCounter % 60 == 0) {
+      _DiagLog.add(
+        'Painter',
+        'paint #$_diagPaintCounter size=${size.width}x${size.height}',
+      );
+    }
     // Guard against painting before _buildWorld() has finished: `_runner`
     // and the other late-initialized instanced-mesh fields it sets up are
     // not ready until then, and reading them earlier throws

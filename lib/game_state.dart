@@ -1242,6 +1242,11 @@ class _GamePageState extends State<GamePage>
     _scene.add(Node()..addComponent(InstancedMeshComponent(_dashes!)));
     await _buildCityProps();
     _DiagLog.add('BuildWorld', 'city props done');
+
+    _DiagLog.add(
+      'BuildWorld',
+      'scene children after city props: ${_scene.children.length}',
+    );
     // Old procedural roadside decoration disabled.
     // City GLB assets are used instead.
     for (int i = 0; i < rampCount; i++) {
@@ -1266,6 +1271,10 @@ class _GamePageState extends State<GamePage>
       _scene.add(n);
     }
     _DiagLog.add('BuildWorld', 'obstacles done ($obstacleCount loaded)');
+    _DiagLog.add(
+      'BuildWorld',
+      'scene children before completed: ${_scene.children.length}',
+    );
     // Coins are upright discs (a cylinder stood on edge by the painter), not
     // flat cards — that is what gives the reference its edge-on/face-on flash
     // as they spin. All 36 share one geometry and one material, so they are a
@@ -1317,6 +1326,10 @@ class _GamePageState extends State<GamePage>
     // would mean the failure is not observable from Dart at all -- i.e. a
     // native-layer/GPU-driver problem, not an app bug.
     _DiagLog.add('BuildWorld', 'completed with no exception');
+    _DiagLog.add(
+      'BuildWorld',
+      'worldReady=$_worldReady runnerInitialized=${_runner is Node}',
+    );
   }
 
   /// One-time daylight scene setup: a shadow-casting sun + soft ambient so PBR
@@ -1430,6 +1443,15 @@ class _GamePageState extends State<GamePage>
 
       _scene.add(dash);
       _dash = dash; // the ticker repaints every frame, so paint() picks it up
+
+      _DiagLog.add(
+        'LoadDash',
+        'Dash added: scale=$dashScale x=$_runnerX y=$dashFootY z=$runnerZ',
+      );
+      _DiagLog.add(
+        'LoadDash',
+        'scene children after Dash: ${_scene.children.length}',
+      );
       _DiagLog.add('LoadDash', 'dash model loaded successfully');
     } catch (e) {
       debugPrint('Dash model failed to load; keeping placeholder cube: $e');
