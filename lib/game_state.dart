@@ -1240,12 +1240,8 @@ class _GamePageState extends State<GamePage>
       _dashes!.addInstance(vm.Matrix4.identity());
     }
     _scene.add(Node()..addComponent(InstancedMeshComponent(_dashes!)));
-    // Temporarily disabled during the Dash/performance diagnostic pass.
-    // _buildCityProps() creates 36 separate GLB nodes.
-    _DiagLog.add(
-      'BuildWorld',
-      'city GLB props skipped for diagnostic pass',
-    );
+    await _buildCityProps();
+    _DiagLog.add('BuildWorld', 'city props done');
     // Old procedural roadside decoration disabled.
     // City GLB assets are used instead.
     for (int i = 0; i < rampCount; i++) {
