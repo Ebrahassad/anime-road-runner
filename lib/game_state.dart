@@ -21,7 +21,7 @@ class _GamePageState extends State<GamePage>
   // The runner is the Flutter mascot (Dash), imported from a .glb at runtime
   // with Node.fromGlbAsset. Until it resolves, the debug cube stands in.
   static const String dashAsset = 'assets/models/dash.glb';
-  static const double dashScale = 0.5; // model is ~2.95u tall -> ~1.48u here
+  static const double dashScale = 0.65; // temporary visibility calibration
   static const double dashYaw = math.pi; // face away from camera; flip to 0 if reversed
   static const double dashFootY = roadTopY; // feet rest on the road surface
   static const double dashTurnGain = 5.0; // yaw lean toward the entered lane
@@ -447,7 +447,7 @@ class _GamePageState extends State<GamePage>
   final List<_Coin> _coins = <_Coin>[];
   final List<_PowerUp> _powerups = <_PowerUp>[];
   final List<_ParticlePool> _particlePools = <_ParticlePool>[];
-  Node? _runner; // debug-cube placeholder, shown until Dash loads
+  late final Node _runner; // debug-cube placeholder, shown until Dash loads
   Node? _dash; // the Flutter Dash model; null until fromGlbAsset resolves
   // Blended locomotion clips + their eased weights: Idle on the menu, Run
   // while playing, Jump one-shot in the air. AnimationClip is unambiguous
@@ -504,6 +504,10 @@ class _GamePageState extends State<GamePage>
   // The actual exception text, shown on the menu next to the warning so it
   // can be read/reported without needing a debugger or `adb logcat`.
   String? _worldLoadErrorDetail;
+  // True only once _buildWorld() has fully finished and every late-init
+  // field it sets (including _runner) is safe to read. The painter checks
+  // this before touching any of them (see game_painter.dart).
+  bool _worldReady = false;
 
   // floating "+N" score popups (screen space, projected via the last camera)
   Camera? _lastCamera;
@@ -531,6 +535,7 @@ class _GamePageState extends State<GamePage>
         if (!mounted) return;
       } catch (e, st) {
         debugPrint('World/model load failed: $e\n$st');
+        _DiagLog.add('BuildWorld/LoadDash', e, st);
         if (mounted) {
           setState(() {
             _worldLoadError = true;
@@ -1131,7 +1136,9 @@ class _GamePageState extends State<GamePage>
   }
 
   Future<void> _buildWorld() async {
+    _DiagLog.add('BuildWorld', 'started');
     _buildTextures();
+    _DiagLog.add('BuildWorld', 'textures done');
 
     // Static ground: grass fields either side + a continuous road bed. They
     // never move, so they're placed once here (not in paint()) and they catch
@@ -1220,6 +1227,7 @@ class _GamePageState extends State<GamePage>
 
       _scene.add(road);
     }
+    _DiagLog.add('BuildWorld', 'road tiles done ($tileCount loaded)');
 
     // Lane dividers: white and *lit*, not the old unlit gold. Lit means they
     // take the same sun and distance fog as the road, so they fade with it
@@ -1232,7 +1240,12 @@ class _GamePageState extends State<GamePage>
       _dashes!.addInstance(vm.Matrix4.identity());
     }
     _scene.add(Node()..addComponent(InstancedMeshComponent(_dashes!)));
-    await _buildCityProps();
+    // Temporarily disabled during the Dash/performance diagnostic pass.
+    // _buildCityProps() creates 36 separate GLB nodes.
+    _DiagLog.add(
+      'BuildWorld',
+      'city GLB props skipped for diagnostic pass',
+    );
     // Old procedural roadside decoration disabled.
     // City GLB assets are used instead.
     for (int i = 0; i < rampCount; i++) {
@@ -1256,6 +1269,7 @@ class _GamePageState extends State<GamePage>
       _obstacles.add(_Obstacle(n));
       _scene.add(n);
     }
+    _DiagLog.add('BuildWorld', 'obstacles done ($obstacleCount loaded)');
     // Coins are upright discs (a cylinder stood on edge by the painter), not
     // flat cards — that is what gives the reference its edge-on/face-on flash
     // as they spin. All 36 share one geometry and one material, so they are a
@@ -1297,9 +1311,9 @@ class _GamePageState extends State<GamePage>
       _scene.add(Node()..addComponent(InstancedMeshComponent(mesh)));
     }
 
-    final Node runner = _box(vm.Vector3(1.0, 1.0, 1.0), debug: true);
-    _runner = runner;
-    _scene.add(runner);
+    _runner = _box(vm.Vector3(1.0, 1.0, 1.0), debug: true);
+    _scene.add(_runner);
+    _worldReady = true;
 
     // Diagnostic only: only reached if every line above ran with no
     // exception. Combined with the on-screen error overlay in main.dart,
@@ -1402,10 +1416,28 @@ class _GamePageState extends State<GamePage>
       jumpLandClip?.weight = 0;
       _clipJumpLand = jumpLandClip;
 
+      // Explicit initial Dash transform.
+      dash.localTransform = vm.Matrix4.identity()
+        ..setTranslationRaw(
+          _runnerX,
+          dashFootY,
+          runnerZ,
+        )
+        ..rotateY(dashYaw)
+        ..scaleByDouble(
+          dashScale,
+          dashScale,
+          dashScale,
+          1.0,
+        );
+      dash.markTransformDirty();
+
       _scene.add(dash);
       _dash = dash; // the ticker repaints every frame, so paint() picks it up
+      _DiagLog.add('LoadDash', 'dash model loaded successfully');
     } catch (e) {
       debugPrint('Dash model failed to load; keeping placeholder cube: $e');
+      _DiagLog.add('LoadDash', 'dash.glb failed, using placeholder: $e');
     }
   }
 
