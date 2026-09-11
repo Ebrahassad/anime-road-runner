@@ -323,8 +323,8 @@ class GamePainter extends CustomPainter {
 
     // Head.
     canvas.drawCircle(const Offset(0, -34), 20, bodyPaint);
-    canvas.drawCircle(const Offset(6, -38), 3.4, Colors.black87);
-    canvas.drawCircle(const Offset(-9, -34), 2.6, Colors.black87);
+    canvas.drawCircle(const Offset(6, -38), 3.4, Paint()..color = Colors.black87);
+    canvas.drawCircle(const Offset(-9, -34), 2.6, Paint()..color = Colors.black87);
 
     // Little quiff.
     final Path quiff = Path()
