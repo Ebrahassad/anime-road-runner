@@ -1,0 +1,39 @@
+name: anime_road_runner
+description: "Anime Road Runner — a 2D endless runner built on plain Flutter Canvas."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.5.5
+  audioplayers: ^6.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sfx/
+    - assets/icon/app_icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  # Adaptive icon (Android 8+): full-bleed foreground (no transparent
+  # padding) over a solid background colour sampled from the icon's own sky,
+  # so the artwork fills the whole icon shape edge-to-edge on every launcher
+  # regardless of its mask.
+  adaptive_icon_background: "#60C5F9"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
