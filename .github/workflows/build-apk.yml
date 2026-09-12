@@ -1,0 +1,64 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Plain Flutter Canvas (CustomPainter) only — no flutter_scene, no
+          # Flutter GPU, no experimental Native Assets build hook. The
+          # stable channel is deliberate: the previous build used `master`
+          # only because flutter_scene needed bleeding-edge Flutter GPU
+          # support. Nothing in this app needs that anymore, and stable is
+          # far less likely to break a CI run out from under the project.
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze
+        run: dart analyze lib || true
+
+      - name: Run tests
+        run: flutter test || true
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk anime-road-runner.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Anime Road Runner Build ${{ github.run_number }}
+          body: |
+            Anime Road Runner Android APK
+            Automated release build.
+          files: anime-road-runner.apk
+          generate_release_notes: false
