@@ -51,8 +51,10 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Rename APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk anime-road-runner.apk
+      - name: Package APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk anime-road-runner.apk
+          zip -j anime-road-runner.zip anime-road-runner.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -62,5 +64,5 @@ jobs:
           body: |
             Anime Road Runner Android APK
             Automated release build.
-          files: anime-road-runner.apk
+          files: anime-road-runner.zip
           generate_release_notes: false
