@@ -34,23 +34,7 @@ class RunnerApp extends StatefulWidget {
 }
 
 class _RunnerAppState extends State<RunnerApp> {
-  final GameEngine engine = GameEngine();
-  bool _ready = false;
-
   @override
-  void initState() {
-    super.initState();
-    engine.ready.then((_) {
-      if (mounted) setState(() => _ready = true);
-    });
-  }
-
-  @override
-  void dispose() {
-    engine.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AppLanguage>(
@@ -66,7 +50,7 @@ class _RunnerAppState extends State<RunnerApp> {
               colorScheme: ColorScheme.fromSeed(
                   seedColor: _teal, brightness: Brightness.dark),
             ),
-            home: !_ready ? const _Splash() : const Runner3DScene(),
+            home: const Runner3DScene(),
           ),
         );
       },
