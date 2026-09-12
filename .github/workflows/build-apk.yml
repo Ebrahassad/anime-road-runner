@@ -20,14 +20,16 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          # Plain Flutter Canvas (CustomPainter) only — no flutter_scene, no
-          # Flutter GPU, no experimental Native Assets build hook. The
-          # stable channel is deliberate: the previous build used `master`
-          # only because flutter_scene needed bleeding-edge Flutter GPU
-          # support. Nothing in this app needs that anymore, and stable is
-          # far less likely to break a CI run out from under the project.
           channel: stable
           cache: true
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required CMake
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "cmake;3.31.4"
 
       - name: Flutter version
         run: |
