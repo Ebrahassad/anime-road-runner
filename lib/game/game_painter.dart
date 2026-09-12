@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 
 import 'game_engine.dart';
 import 'game_math.dart' as gm;
-import 'models.dart';
+import '../models/models.dart';
 
 const Color _skyTop = Color(0xFF3E8FE0);
 const Color _skyBottom = Color(0xFFAEE0F5);

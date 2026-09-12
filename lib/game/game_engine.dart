@@ -16,8 +16,8 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'game_math.dart' as gm;
-import 'l10n.dart';
-import 'models.dart';
+import '../l10n.dart';
+import '../models/models.dart';
 
 enum Phase { menu, playing, crashed }
 

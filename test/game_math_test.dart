@@ -1,6 +1,6 @@
 // Run: `flutter test`  (or `flutter test test/game_math_test.dart`)
 
-import 'package:anime_road_runner/game_math.dart';
+import 'package:anime_road_runner/game/game_math.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

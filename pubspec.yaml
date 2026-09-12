@@ -8,11 +8,13 @@ environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
+  three_js: ^0.3.0
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.5
   audioplayers: ^6.8.1
+  three_js_advanced_loaders: ^0.3.0
 
 dev_dependencies:
   flutter_test:
@@ -24,6 +26,8 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/road-straight.glb
+    - assets/dash.glb
     - assets/sfx/
     - assets/icon/app_icon.png
     - assets/character/

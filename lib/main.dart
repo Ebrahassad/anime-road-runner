@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-import 'game_engine.dart';
-import 'game_math.dart' as gm;
-import 'game_painter.dart';
+import 'game/game_engine.dart';
+import 'game/game_math.dart' as gm;
+import 'game/game_painter.dart';
 import 'l10n.dart';
+import 'three_d/runner_3d_scene.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,11 +63,10 @@ class _RunnerAppState extends State<RunnerApp> {
             debugShowCheckedModeBanner: false,
             theme: ThemeData.dark(useMaterial3: true).copyWith(
               scaffoldBackgroundColor: _bg,
-              colorScheme: ColorScheme.fromSeed(seedColor: _teal, brightness: Brightness.dark),
+              colorScheme: ColorScheme.fromSeed(
+                  seedColor: _teal, brightness: Brightness.dark),
             ),
-            home: !_ready
-                ? const _Splash()
-                : GamePage(engine: engine),
+            home: !_ready ? const _Splash() : const Runner3DScene(),
           ),
         );
       },
@@ -87,7 +87,8 @@ class _Splash extends StatelessWidget {
           children: <Widget>[
             ClipRRect(
               borderRadius: BorderRadius.circular(22),
-              child: Image.asset('assets/icon/app_icon.png', width: 84, height: 84),
+              child: Image.asset('assets/icon/app_icon.png',
+                  width: 84, height: 84),
             ),
             const SizedBox(height: 20),
             const SizedBox(
@@ -112,7 +113,8 @@ class GamePage extends StatefulWidget {
   State<GamePage> createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin {
+class _GamePageState extends State<GamePage>
+    with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
   Duration _last = Duration.zero;
   int _frame = 0;
@@ -249,7 +251,8 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
                 child: const SizedBox.expand(),
               ),
               if (engine.phase == Phase.playing) _Hud(engine: engine),
-              if (engine.phase == Phase.menu) _MenuOverlay(engine: engine, onPlay: _startRun),
+              if (engine.phase == Phase.menu)
+                _MenuOverlay(engine: engine, onPlay: _startRun),
               if (engine.phase == Phase.crashed)
                 _GameOverOverlay(
                   engine: engine,
@@ -304,7 +307,9 @@ class _Hud extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 6),
         child: _Capsule(
           color: color.withOpacity(0.85),
-          child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+          child: Text(text,
+              style:
+                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
         ),
       );
 }
@@ -372,14 +377,16 @@ class _MenuOverlay extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     AppStrings.t('best_scores'),
-                    style: const TextStyle(color: _teal, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                        color: _teal, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   if (engine.leaderboard.isEmpty)
                     Text(
                       AppStrings.t('no_scores'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white54, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 13),
                     )
                   else
                     ...List<Widget>.generate(engine.leaderboard.length, (i) {
@@ -393,7 +400,8 @@ class _MenuOverlay extends StatelessWidget {
                                 style: const TextStyle(color: Colors.white70)),
                             Text('${entry.score}',
                                 style: const TextStyle(
-                                    color: Colors.white, fontWeight: FontWeight.w700)),
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       );
@@ -410,11 +418,13 @@ class _MenuOverlay extends StatelessWidget {
                   backgroundColor: _teal,
                   foregroundColor: _bg,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999)),
                 ),
                 child: Text(
                   AppStrings.t('play'),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 16),
                 ),
               ),
             ),
@@ -469,10 +479,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           children: <Widget>[
             Text(
               AppStrings.t('settings'),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 18),
-            Text(AppStrings.t('language'), style: const TextStyle(color: Colors.white70)),
+            Text(AppStrings.t('language'),
+                style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
@@ -480,7 +494,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   child: _SegButton(
                     label: 'English',
                     selected: AppStrings.language.value == AppLanguage.en,
-                    onTap: () => setState(() => engine.setLanguage(AppLanguage.en)),
+                    onTap: () =>
+                        setState(() => engine.setLanguage(AppLanguage.en)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -488,20 +503,23 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   child: _SegButton(
                     label: 'العربية',
                     selected: AppStrings.language.value == AppLanguage.ar,
-                    onTap: () => setState(() => engine.setLanguage(AppLanguage.ar)),
+                    onTap: () =>
+                        setState(() => engine.setLanguage(AppLanguage.ar)),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            Text(AppStrings.t('sound_effects'), style: const TextStyle(color: Colors.white70)),
+            Text(AppStrings.t('sound_effects'),
+                style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
                 for (int i = 0; i < kVolumes.length; i++)
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(right: i == kVolumes.length - 1 ? 0 : 8),
+                      padding: EdgeInsets.only(
+                          right: i == kVolumes.length - 1 ? 0 : 8),
                       child: _SegButton(
                         label: AppStrings.t(<String>['off', 'low', 'high'][i]),
                         selected: engine.volumeIndex == i,
@@ -527,7 +545,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 }
 
 class _SegButton extends StatelessWidget {
-  const _SegButton({required this.label, required this.selected, required this.onTap});
+  const _SegButton(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -596,7 +615,8 @@ class _GameOverOverlay extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     AppStrings.t('crashed'),
-                    style: const TextStyle(color: _red, fontSize: 22, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                        color: _red, fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -609,13 +629,15 @@ class _GameOverOverlay extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       AppStrings.t(submitted ? 'new_best_bang' : 'new_best'),
-                      style: const TextStyle(color: _gold, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                          color: _gold, fontWeight: FontWeight.w800),
                     ),
                   ],
                   if (showNameEntry) ...<Widget>[
                     const SizedBox(height: 14),
                     Text(AppStrings.t('enter_name'),
-                        style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: nameController,
@@ -645,7 +667,8 @@ class _GameOverOverlay extends StatelessWidget {
                           foregroundColor: _bg,
                         ),
                         child: Text(AppStrings.t('save'),
-                            style: const TextStyle(fontWeight: FontWeight.w800)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w800)),
                       ),
                     ),
                   ],
@@ -660,14 +683,16 @@ class _GameOverOverlay extends StatelessWidget {
                             foregroundColor: _bg,
                           ),
                           child: Text(AppStrings.t('play_again'),
-                              style: const TextStyle(fontWeight: FontWeight.w800)),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton(
                           onPressed: onMenu,
-                          style: OutlinedButton.styleFrom(foregroundColor: Colors.white70),
+                          style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white70),
                           child: Text(AppStrings.t('menu')),
                         ),
                       ),
@@ -680,13 +705,17 @@ class _GameOverOverlay extends StatelessWidget {
                         text: 'Anime Road Runner — score ${engine.score}!',
                       ));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied!'), duration: Duration(seconds: 1)),
+                        const SnackBar(
+                            content: Text('Copied!'),
+                            duration: Duration(seconds: 1)),
                       );
                     },
-                    icon: const Icon(Icons.share, size: 16, color: Colors.white54),
+                    icon: const Icon(Icons.share,
+                        size: 16, color: Colors.white54),
                     label: Text(
                       AppStrings.t('share_score'),
-                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ),
                   Text(
